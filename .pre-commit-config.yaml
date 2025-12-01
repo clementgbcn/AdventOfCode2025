@@ -1,0 +1,27 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.1.0
+    hooks:
+        - id: check-merge-conflict
+        - id: end-of-file-fixer
+        - id: check-json
+        - id: check-docstring-first
+        - id: trailing-whitespace
+          files: \.py$
+-   repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.8.2
+    hooks:
+        # Run the linter.
+        - id: ruff
+        # Run the formatter.
+        - id: ruff-format
+-   repo: local
+    hooks:
+    -   id: isort
+        name: isort
+        description: Run isort on allowlisted files
+        entry: 'dev/git-hooks/isort'
+        language: system
+        files: \.py$
+        verbose: true
