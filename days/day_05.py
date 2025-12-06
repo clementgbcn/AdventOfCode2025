@@ -8,7 +8,6 @@ from utils.input_parser import InputParser
 
 
 class Day05(Day):
-
     FIRST_STAR_TEST_RESULT = 3
     SECOND_STAR_TEST_RESULT = 14
 
@@ -22,7 +21,7 @@ class Day05(Day):
         for line in iterator:
             if line == "":
                 break
-            a, b = list(map(lambda x: int(x), line.split('-')))
+            a, b = list(map(lambda x: int(x), line.split("-")))
             ranges.append((a, b))
         total = 0
         for ingredient in iterator:
@@ -40,7 +39,7 @@ class Day05(Day):
         for line in iterator:
             if line == "":
                 break
-            a, b = list(map(lambda x: int(x), line.split('-')))
+            a, b = list(map(lambda x: int(x), line.split("-")))
             i = bisect.bisect_left(start, a)
             j = bisect.bisect_left(end, b)
             if len(start) == i:
@@ -56,22 +55,22 @@ class Day05(Day):
                     start = [a] + start[j:]
                     end = [b] + end[j:]
                 else:
-                    start = [a] + start[j+1:]
+                    start = [a] + start[j + 1 :]
                     end = end[j:]
-            elif a <= end[i-1]:
+            elif a <= end[i - 1]:
                 if len(end) == j:
                     # It means it is the last one
-                    end[i-1] = b
+                    end[i - 1] = b
                     start = start[:i]
                     end = end[:i]
                 elif b < start[j]:
-                    end[i-1] = b
+                    end[i - 1] = b
                     start = start[:i] + start[j:]
                     end = end[:i] + end[j:]
                 else:
-                    end[i-1] = end[j]
-                    start = start[:i] + start[j+1:]
-                    end = end[:i] + end[j+1:]
+                    end[i - 1] = end[j]
+                    start = start[:i] + start[j + 1 :]
+                    end = end[:i] + end[j + 1 :]
             else:
                 if len(end) == j:
                     # It means it is the last one
@@ -85,8 +84,8 @@ class Day05(Day):
                 else:
                     start[i] = a
                     end[i] = end[j]
-                    start = start[:i+1] + start[j+1:]
-                    end = end[:i+1] + end[j+1:]
+                    start = start[: i + 1] + start[j + 1 :]
+                    end = end[: i + 1] + end[j + 1 :]
         total = 0
         for i in range(len(start)):
             total += end[i] - start[i] + 1

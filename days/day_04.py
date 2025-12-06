@@ -6,7 +6,6 @@ from utils.input_parser import InputParser
 
 
 class Day04(Day):
-
     FIRST_STAR_TEST_RESULT = 13
     SECOND_STAR_TEST_RESULT = 43
 
@@ -39,7 +38,12 @@ class Day04(Day):
                 count = 0
                 for x in range(-1, 2):
                     for y in range(-1, 2):
-                        if (x == 0 and y == 0) or not (0 <= i + x < len(grid)) or not (0 <= j + y < len(grid[0])) or grid[i + x][j + y] != "@":
+                        if (
+                            (x == 0 and y == 0)
+                            or not (0 <= i + x < len(grid))
+                            or not (0 <= j + y < len(grid[0]))
+                            or grid[i + x][j + y] != "@"
+                        ):
                             continue
                         count += 1
                         if count > 3:

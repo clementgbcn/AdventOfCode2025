@@ -34,7 +34,7 @@ class Day01(Day):
                 continue
             prev_dial = dial
             dial += Day01.DIR[r[0]] * v
-            if dial < 0 or dial >= 100 :
+            if dial < 0 or dial >= 100:
                 pwd += 1 if prev_dial != 0 else 0
             elif dial == 0:
                 pwd += 1
