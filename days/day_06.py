@@ -20,15 +20,13 @@ class Day06(Day):
     @staticmethod
     def solve(input_value: InputParser) -> int:
         pb = input_value.get_table()
-        ops = []
-        results = []
-        for o in pb[-1].split(" "):
-            if o != "":
-                ops.append(Day06.OP_MAPPING[o])
-                results.append(1 if o == "*" else 0)
+        ops_line = list(filter(lambda x: x != "", pb[-1].split(" ")))
+        ops = [Day06.OP_MAPPING[o] for o in ops_line]
+        results = [1 if o == "*" else 0 for o in ops_line]
         for line in pb[:-1]:
-            for idx, i in enumerate(extract_int(line)):
-                results[idx] = ops[idx](results[idx], i)
+            results = [
+                ops[idx](results[idx], i) for idx, i in enumerate(extract_int(line))
+            ]
         return sum(results)
 
     @staticmethod
