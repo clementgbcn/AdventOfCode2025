@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Day 6 - Math Worksheet Visualization</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            background: #0f0f23;
+            color: #cccccc;
+        }
+        #root {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background: #10101a;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #00cc00;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #009900;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+        }
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        select, input[type="range"] {
+            padding: 8px;
+            background: #1a1a2e;
+            color: #cccccc;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .worksheet {
+            display: inline-block;
+            background: #1a1a2e;
+            padding: 30px;
+            border-radius: 8px;
+            font-size: 24px;
+            line-height: 1.8;
+            letter-spacing: 0.1em;
+            margin: 20px auto;
+            box-shadow: 0 2px 8px rgba(0, 255, 0, 0.1);
+        }
+        .worksheet-container {
+            display: flex;
+            justify-content: center;
+        }
+        .column {
+            display: inline-block;
+            text-align: right;
+            margin: 0 10px;
+            position: relative;
+        }
+        .number {
+            transition: all 0.3s ease;
+        }
+        .number.active {
+            color: #ffff00;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffff00;
+        }
+        .number.computed {
+            color: #00ff00;
+        }
+        .operator {
+            color: #ff6600;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .result-display {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
+        }
+        .problem-result {
+            display: inline-block;
+            margin: 10px 20px;
+            padding: 15px 25px;
+            background: #1a1a2e;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+        .problem-result.active {
+            background: #2a2a3e;
+            border: 2px solid #ffff00;
+            transform: scale(1.05);
+        }
+        .problem-result.completed {
+            border: 2px solid #00ff00;
+        }
+        .problem-label {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .problem-value {
+            color: #00cc00;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .grand-total {
+            margin-top: 30px;
+            padding: 20px;
+            background: #2a2a3e;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 24px;
+            border: 2px solid #00cc00;
+        }
+        .grand-total.visible {
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .step-info {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 16px;
+            color: #ffff00;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const SAMPLE_INPUT = `123 328  51 64
+ 45 64  387 23
+  6 98  215 314
+*   +   *   +  `;
+
+        function parseInput(input) {
+            const lines = input.trim().split('\n');
+            return lines;
+        }
+
+        function App() {
+            const [input, setInput] = useState(SAMPLE_INPUT);
+            const [part, setPart] = useState(1);
+            const [speed, setSpeed] = useState(500);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [currentStep, setCurrentStep] = useState(0);
+            const [problemResults, setProblemResults] = useState([]);
+            const [activeNumbers, setActiveNumbers] = useState(new Set());
+            const [activeProblem, setActiveProblem] = useState(null);
+            const [stepInfo, setStepInfo] = useState('');
+            const [grandTotal, setGrandTotal] = useState(null);
+
+            const animationRef = useRef(null);
+
+            const parsedInput = parseInput(input);
+
+            const reset = () => {
+                setIsPlaying(false);
+                setCurrentStep(0);
+                setProblemResults([]);
+                setActiveNumbers(new Set());
+                setActiveProblem(null);
+                setStepInfo('');
+                setGrandTotal(null);
+                if (animationRef.current) {
+                    clearTimeout(animationRef.current);
+                }
+            };
+
+            useEffect(() => {
+                reset();
+            }, [part, input]);
+
+            const solvePart1 = () => {
+                const pb = parsedInput;
+                const operators = [];
+                const results = [];
+
+                for (let o of pb[pb.length - 1].split(' ')) {
+                    if (o !== '') {
+                        operators.push(o);
+                        results.push(o === '*' ? 1 : 0);
+                    }
+                }
+
+                const steps = [];
+
+                for (let lineIdx = 0; lineIdx < pb.length - 1; lineIdx++) {
+                    const numbers = pb[lineIdx].match(/\d+/g) || [];
+                    let numIdx = 0;
+
+                    for (let colIdx = 0; colIdx < operators.length; colIdx++) {
+                        if (numIdx < numbers.length) {
+                            const num = parseInt(numbers[numIdx]);
+                            const op = operators[colIdx];
+                            const oldResult = results[colIdx];
+
+                            if (op === '*') {
+                                results[colIdx] = results[colIdx] * num;
+                            } else {
+                                results[colIdx] = results[colIdx] + num;
+                            }
+
+                            steps.push({
+                                lineIdx,
+                                colIdx,
+                                num,
+                                op,
+                                oldResult,
+                                newResult: results[colIdx],
+                                allResults: [...results]
+                            });
+
+                            numIdx++;
+                        }
+                    }
+                }
+
+                steps.push({
+                    final: true,
+                    grandTotal: results.reduce((a, b) => a + b, 0)
+                });
+
+                return steps;
+            };
+
+            const solvePart2 = () => {
+                const pb = parsedInput;
+                const steps = [];
+                let total = 0;
+                const results = [];
+                let values = [];
+                let currentOp = null;
+                let problemIdx = 0;
+
+                const maxLen = Math.max(...pb.map(line => line.length));
+
+                for (let i = 0; i < maxLen; i++) {
+                    if (i < pb[pb.length - 1].length && pb[pb.length - 1][i] !== ' ') {
+                        if (currentOp !== null && values.length > 0) {
+                            let result = values[0];
+                            for (let v = 1; v < values.length; v++) {
+                                const oldResult = result;
+                                if (currentOp === '*') {
+                                    result = result * values[v];
+                                } else {
+                                    result = result + values[v];
+                                }
+                                steps.push({
+                                    problemIdx,
+                                    columnIdx: i - 1,
+                                    valueIdx: v,
+                                    values: [...values],
+                                    op: currentOp,
+                                    oldResult,
+                                    newResult: result,
+                                    isComputing: true
+                                });
+                            }
+                            total += result;
+                            results.push(result);
+                            steps.push({
+                                problemIdx,
+                                result,
+                                allResults: [...results],
+                                runningTotal: total,
+                                problemComplete: true
+                            });
+                            problemIdx++;
+                        }
+                        currentOp = pb[pb.length - 1][i];
+                        values = [];
+                    }
+
+                    let value = '';
+                    for (let j = 0; j < pb.length - 1; j++) {
+                        value += i < pb[j].length ? pb[j][i] : '';
+                    }
+
+                    if (value.trim() !== '') {
+                        const num = parseInt(value);
+                        values.push(num);
+                        steps.push({
+                            problemIdx,
+                            columnIdx: i,
+                            readValue: num,
+                            values: [...values]
+                        });
+                    }
+                }
+
+                if (currentOp !== null && values.length > 0) {
+                    let result = values[0];
+                    for (let v = 1; v < values.length; v++) {
+                        const oldResult = result;
+                        if (currentOp === '*') {
+                            result = result * values[v];
+                        } else {
+                            result = result + values[v];
+                        }
+                        steps.push({
+                            problemIdx,
+                            valueIdx: v,
+                            values: [...values],
+                            op: currentOp,
+                            oldResult,
+                            newResult: result,
+                            isComputing: true
+                        });
+                    }
+                    total += result;
+                    results.push(result);
+                    steps.push({
+                        problemIdx,
+                        result,
+                        allResults: [...results],
+                        runningTotal: total,
+                        problemComplete: true
+                    });
+                }
+
+                steps.push({
+                    final: true,
+                    grandTotal: total
+                });
+
+                return steps;
+            };
+
+            const play = () => {
+                setIsPlaying(true);
+                const steps = part === 1 ? solvePart1() : solvePart2();
+
+                const runStep = (stepIdx) => {
+                    if (stepIdx >= steps.length) {
+                        setIsPlaying(false);
+                        return;
+                    }
+
+                    const step = steps[stepIdx];
+                    setCurrentStep(stepIdx);
+
+                    if (step.final) {
+                        setStepInfo(`✨ Complete! Grand Total: ${step.grandTotal}`);
+                        setGrandTotal(step.grandTotal);
+                        setActiveNumbers(new Set());
+                        setActiveProblem(null);
+                        setIsPlaying(false);
+                        return;
+                    }
+
+                    if (part === 1) {
+                        setActiveNumbers(new Set([`${step.lineIdx}-${step.colIdx}`]));
+                        setActiveProblem(step.colIdx);
+                        setProblemResults(step.allResults);
+                        setStepInfo(`Problem ${step.colIdx + 1}: ${step.oldResult} ${step.op} ${step.num} = ${step.newResult}`);
+                    } else {
+                        if (step.isComputing) {
+                            setStepInfo(`Problem ${step.problemIdx + 1}: ${step.oldResult} ${step.op} ${step.values[step.valueIdx]} = ${step.newResult}`);
+                            setProblemResults(prev => {
+                                const newResults = [...prev];
+                                newResults[step.problemIdx] = step.newResult;
+                                return newResults;
+                            });
+                        } else if (step.problemComplete) {
+                            setStepInfo(`Problem ${step.problemIdx + 1} complete: ${step.result}`);
+                            setProblemResults(step.allResults);
+                            setActiveProblem(null);
+                        } else if (step.readValue !== undefined) {
+                            setStepInfo(`Reading value: ${step.readValue} for Problem ${step.problemIdx + 1}`);
+                            setActiveProblem(step.problemIdx);
+                            setActiveNumbers(new Set([`col-${step.columnIdx}`]));
+                            setProblemResults(prev => {
+                                const newResults = [...prev];
+                                newResults[step.problemIdx] = step.values[step.values.length - 1];
+                                return newResults;
+                            });
+                        }
+                    }
+
+                    animationRef.current = setTimeout(() => runStep(stepIdx + 1), speed);
+                };
+
+                runStep(0);
+            };
+
+            const renderWorksheet = () => {
+                if (parsedInput.length === 0) return null;
+
+                const operatorLine = parsedInput[parsedInput.length - 1];
+                const numberLines = parsedInput.slice(0, -1);
+
+                const operators = [];
+                const columnRanges = [];
+                let currentStart = 0;
+
+                for (let i = 0; i < operatorLine.length; i++) {
+                    if (operatorLine[i] !== ' ') {
+                        operators.push({ op: operatorLine[i], index: i });
+                        columnRanges.push({ start: currentStart, end: i });
+                        currentStart = i + 1;
+                    }
+                }
+
+                if (part === 1) {
+                    const extractIntegers = (line) => {
+                        const matches = line.match(/\d+/g);
+                        return matches ? matches.map(n => parseInt(n)) : [];
+                    };
+
+                    const operatorsList = operatorLine.split(' ').filter(o => o !== '');
+                    const numProblems = operatorsList.length;
+
+                    const columns = [];
+
+                    for (let problemIdx = 0; problemIdx < numProblems; problemIdx++) {
+                        const columnNums = [];
+
+                        for (let lineIdx = 0; lineIdx < numberLines.length; lineIdx++) {
+                            const numbers = extractIntegers(numberLines[lineIdx]);
+                            if (problemIdx < numbers.length) {
+                                const isActive = activeNumbers.has(`${lineIdx}-${problemIdx}`);
+                                columnNums.push(
+                                    <div key={`${problemIdx}-${lineIdx}`} className={`number ${isActive ? 'active' : ''}`}>
+                                        {numbers[problemIdx]}
+                                    </div>
+                                );
+                            }
+                        }
+
+                        columns.push(
+                            <div key={problemIdx} className="column">
+                                {columnNums}
+                                <div className="operator">{operatorsList[problemIdx]}</div>
+                            </div>
+                        );
+                    }
+
+                    return <div className="worksheet">{columns}</div>;
+                } else {
+                    const maxLen = Math.max(...parsedInput.map(line => line.length));
+
+                    return (
+                        <div className="worksheet" style={{ fontFamily: 'monospace', whiteSpace: 'pre' }}>
+                            {numberLines.map((line, rowIdx) => (
+                                <div key={rowIdx} style={{ display: 'flex' }}>
+                                    {Array.from({ length: maxLen }).map((_, colIdx) => {
+                                        const char = colIdx < line.length ? line[colIdx] : ' ';
+                                        const isActive = activeNumbers.has(`col-${colIdx}`);
+                                        return (
+                                            <span
+                                                key={colIdx}
+                                                className={isActive ? 'number active' : ''}
+                                                style={{ display: 'inline-block', width: '1ch' }}
+                                            >
+                                                {char}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                            <div style={{ display: 'flex', marginTop: '10px' }}>
+                                {Array.from({ length: maxLen }).map((_, colIdx) => {
+                                    const char = colIdx < operatorLine.length ? operatorLine[colIdx] : ' ';
+                                    return (
+                                        <span
+                                            key={colIdx}
+                                            className="operator"
+                                            style={{ display: 'inline-block', width: '1ch' }}
+                                        >
+                                            {char}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                }
+            };
+
+            return (
+                <div className="container">
+                    <h1>🎄 Advent of Code - Day 6 🎄</h1>
+                    <div className="subtitle">Math Worksheet Animation</div>
+
+                    <div className="controls">
+                        <div className="control-group">
+                            <label>Part:</label>
+                            <select value={part} onChange={(e) => setPart(Number(e.target.value))} disabled={isPlaying}>
+                                <option value={1}>Part 1 (Left-to-Right)</option>
+                                <option value={2}>Part 2 (Column-by-Column)</option>
+                            </select>
+                        </div>
+
+                        <div className="control-group">
+                            <label>Speed:</label>
+                            <input
+                                type="range"
+                                min="100"
+                                max="2000"
+                                step="100"
+                                value={speed}
+                                onChange={(e) => setSpeed(Number(e.target.value))}
+                            />
+                            <span>{speed}ms</span>
+                        </div>
+
+                        <button onClick={play} disabled={isPlaying}>
+                            {isPlaying ? '⏸ Playing...' : '▶ Play'}
+                        </button>
+
+                        <button onClick={reset} disabled={isPlaying}>
+                            🔄 Reset
+                        </button>
+                    </div>
+
+                    <div className="step-info">{stepInfo}</div>
+
+                    <div className="worksheet-container">
+                        {renderWorksheet()}
+                    </div>
+
+                    {problemResults.length > 0 && (
+                        <div className="result-display">
+                            {problemResults.map((result, idx) => (
+                                <div
+                                    key={idx}
+                                    className={`problem-result ${activeProblem === idx ? 'active' : ''} ${result !== undefined ? 'completed' : ''}`}
+                                >
+                                    <div className="problem-label">Problem {idx + 1}</div>
+                                    <div className="problem-value">{result !== undefined ? result : '...'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {grandTotal !== null && (
+                        <div className="grand-total visible">
+                            <strong>Grand Total:</strong> {grandTotal}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
